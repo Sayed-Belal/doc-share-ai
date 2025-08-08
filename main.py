@@ -1,50 +1,30 @@
-from fastapi import FastAPI, Form, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, request, jsonify, send_from_directory
 import os
 import uuid
 
-app = FastAPI()
+app = Flask(__name__)
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Allow all origins (change in production)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
 
-STORAGE_DIR = "storage"
-os.makedirs(STORAGE_DIR, exist_ok=True)
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
 
-@app.post("/upload")
-async def upload_text(content: str = Form(...)):
-    slug = uuid.uuid4().hex[:8]
-    path = os.path.join(STORAGE_DIR, f"{slug}.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    return {"url": f"/s/{slug}"}
+    filename = str(uuid.uuid4()) + "_" + file.filename
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
 
-@app.post("/upload-file")
-async def upload_file(file: UploadFile = File(...)):
-    slug = uuid.uuid4().hex[:8]
-    extension = os.path.splitext(file.filename)[1]
-    filename = f"{slug}{extension}"
-    path = os.path.join(STORAGE_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(await file.read())
-    return {"url": f"/s/{slug}"}
+    # Return the full public URL
+    return jsonify({"url": f"https://doc-share-ai.onrender.com/uploads/{filename}"})
 
-@app.get("/s/{slug}")
-async def serve_content(slug: str):
-    # Try both .txt and common file types
-    for ext in ["", ".txt", ".jpg", ".png", ".pdf"]:
-        path = os.path.join(STORAGE_DIR, f"{slug}{ext}")
-        if os.path.exists(path):
-            # For .txt, serve plain text
-            if path.endswith(".txt"):
-                with open(path, "r", encoding="utf-8") as f:
-                    return PlainTextResponse(f.read())
-            return FileResponse(path)
-    raise HTTPException(status_code=404, detail="Not found")
+@app.route('/uploads/<filename>', methods=['GET'])
+def serve_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
