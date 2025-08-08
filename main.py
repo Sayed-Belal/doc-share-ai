@@ -11,11 +11,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/upload', methods=['POST'])
 def upload_text():
-    data = request.get_json()
-    if not data or 'text' not in data:
-        return jsonify({"error": "No text provided"}), 400
-
-    text = data['text'].strip()
+    text = request.form.get('content', '').strip()
+if not text:
+    return jsonify({"error": "No text provided"}), 400
+    
     if not text:
         return jsonify({"error": "Empty text"}), 400
 
@@ -24,7 +23,7 @@ def upload_text():
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(text)
 
-    file_url = f"{request.host_url}files/{filename}"
+    file_url = request.host_url.rstrip('/') + '/files/' + filename
     return jsonify({"url": file_url})
 
 @app.route('/upload-file', methods=['POST'])
@@ -49,3 +48,4 @@ def serve_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+
