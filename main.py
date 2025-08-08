@@ -1,30 +1,31 @@
 from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import os
 import uuid
 
-app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app = Flask(__name__)
+CORS(app)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"error": "Empty filename"}), 400
+        return jsonify({'error': 'No selected file'}), 400
 
-    filename = str(uuid.uuid4()) + "_" + file.filename
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(UPLOAD_FOLDER, unique_name)
     file.save(filepath)
 
-    # Return the full public URL
-    return jsonify({"url": f"https://doc-share-ai.onrender.com/uploads/{filename}"})
+    file_url = f"https://doc-share-ai.onrender.com/file/{unique_name}"
+    return jsonify({'url': file_url})
 
-@app.route('/uploads/<filename>', methods=['GET'])
+@app.route('/file/<filename>')
 def serve_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
