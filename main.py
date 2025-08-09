@@ -32,11 +32,13 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    filename = f"{uuid.uuid4()}_{file.filename}"
+    # Sanitize filename: remove spaces
+    original_filename = file.filename.replace(' ', '_')
+    filename = f"{uuid.uuid4()}_{original_filename}"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
-    file_url = f"{request.host_url}files/{filename}"
+    file_url = request.host_url.rstrip('/') + '/files/' + filename
     return jsonify({'url': file_url})
 
 @app.route('/files/<path:filename>')
@@ -45,3 +47,4 @@ def serve_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+
