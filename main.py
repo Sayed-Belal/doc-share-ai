@@ -1,20 +1,19 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
-import uuid
 import secrets
 import string
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all domains
+CORS(app)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Random slug generator
 def generate_slug(length=10):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
-
 
 @app.route('/upload', methods=['POST'])
 def upload_text():
@@ -22,8 +21,10 @@ def upload_text():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    filename = f"{uuid.uuid4()}.txt"
+    slug = generate_slug()
+    filename = f"{slug}.txt"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
+
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(text)
 
@@ -40,8 +41,8 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
 
     slug = generate_slug()
-    extension = os.path.splitext(file.filename)[1] or ''  # retain extension like .pdf or .png
-    filename = f"{slug}{extension}"
+    ext = os.path.splitext(file.filename)[1] or ''
+    filename = f"{slug}{ext}"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
@@ -54,5 +55,3 @@ def serve_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
-
-
