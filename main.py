@@ -2,12 +2,19 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import uuid
+import secrets
+import string
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all domains
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def generate_slug(length=10):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
 
 @app.route('/upload', methods=['POST'])
 def upload_text():
@@ -32,9 +39,9 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    # Sanitize filename: remove spaces
-    original_filename = file.filename.replace(' ', '_')
-    filename = f"{uuid.uuid4()}_{original_filename}"
+    slug = generate_slug()
+    extension = os.path.splitext(file.filename)[1] or ''  # retain extension like .pdf or .png
+    filename = f"{slug}{extension}"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
@@ -47,4 +54,5 @@ def serve_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+
 
